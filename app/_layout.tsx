@@ -1,3 +1,4 @@
+import { AuthProvider } from '@/context/AuthContext'
 import { FirestoreProvider } from '@/context/FirestoreContext'
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
@@ -25,12 +26,17 @@ export default function RootLayout() {
 	}
 
 	return (
-		<FirestoreProvider>
-			<Stack>
-				<Stack.Screen name='(tabs)' options={{ headerShown: false }} />
-				<Stack.Screen name='+not-found' />
-			</Stack>
-			<StatusBar style='auto' />
-		</FirestoreProvider>
+		<AuthProvider>
+			<FirestoreProvider>
+				<Stack>
+					<Stack.Screen
+						name='(tabs)'
+						options={{ headerShown: false }}
+					/>
+					<Stack.Screen name='+not-found' />
+				</Stack>
+				<StatusBar style='auto' />
+			</FirestoreProvider>
+		</AuthProvider>
 	)
 }

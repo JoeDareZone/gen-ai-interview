@@ -12,7 +12,7 @@ export function useChatConversation(
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{
 			role: 'AI',
-			text: 'You are a helpful educational assistant. Provide clear bullet-pointed answers. For example: "- Key point 1\n- Key point 2\n- ',
+			text: 'You are a friendly and engaging educational tutor. When you answer, use a conversational tone with three bullet points and step-by-step explanations. Include personal insights, relatable examples, and use a warm, encouraging style. Return your answer in JSON format using the provided schema.',
 		},
 	])
 	const [isLoading, setIsLoading] = useState(false)
@@ -40,62 +40,50 @@ export function useChatConversation(
 		let newAssistantMessage: ChatMessage
 
 		try {
-			if (type === 'explainFurther') {
-				const explainFurtherResponse =
-					await client.chat.completions.create({
-						model: 'gpt-4o-2024-08-06',
-						messages: updatedHistory.map(message => ({
-							role: message.role === 'AI' ? 'assistant' : 'user',
-							content: message.text,
-						})),
-						max_tokens: options.maxTokens || 1000,
-						temperature: options.temperature || 0.7,
-					})
+			const reponse = await client.responses.create({
+				model: 'gpt-4o-2024-08-06',
+				input: updatedHistory.map(message => ({
+					role: message.role === 'AI' ? 'assistant' : 'user',
+					content: message.text,
+				})),
+				text: {
+					format: {
+						type: 'json_schema',
+						name: 'math_reasoning',
+						schema: {
+							type: 'object',
+							properties: {
+								steps: {
+									type: 'array',
+									items: {
+										type: 'object',
+										properties: {
+											explanation: { type: 'string' },
+											output: { type: 'string' },
+										},
+										required: ['explanation', 'output'],
+										additionalProperties: false,
+									},
+								},
+								final_answer: { type: 'string' },
+							},
+							required: ['steps', 'final_answer'],
+							additionalProperties: false,
+						},
+						strict: true,
+					},
+				},
+			})
+			const output = JSON.parse(reponse.output_text)
 
+			if (type === 'explainFurther') {
 				newAssistantMessage = {
 					role: 'AI',
-					text:
-						explainFurtherResponse.choices[0].message.content?.trim() ||
-						'',
+					// bulletPoints: output.steps,
+					text: output.steps[0].explanation,
 					timestamp: new Date().toISOString(),
 				}
 			} else {
-				const bulletPointsResponse = await client.responses.create({
-					model: 'gpt-4o-2024-08-06',
-					input: updatedHistory.map(message => ({
-						role: message.role === 'AI' ? 'assistant' : 'user',
-						content: message.text,
-					})),
-					text: {
-						format: {
-							type: 'json_schema',
-							name: 'math_reasoning',
-							schema: {
-								type: 'object',
-								properties: {
-									steps: {
-										type: 'array',
-										items: {
-											type: 'object',
-											properties: {
-												explanation: { type: 'string' },
-												output: { type: 'string' },
-											},
-											required: ['explanation', 'output'],
-											additionalProperties: false,
-										},
-									},
-									final_answer: { type: 'string' },
-								},
-								required: ['steps', 'final_answer'],
-								additionalProperties: false,
-							},
-							strict: true,
-						},
-					},
-				})
-
-				const output = JSON.parse(bulletPointsResponse.output_text)
 				newAssistantMessage = {
 					role: 'AI',
 					bulletPoints: output.steps,

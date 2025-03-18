@@ -70,14 +70,30 @@ export default function ChatScreen() {
 			flatListRef.current?.scrollToEnd({ animated: true })
 
 			const aiResponse = await sendMessage(userMsg.text, type)
-			const fetchedImageUrl = await fetchImage(userMsg.text)
 
-			const aiMsg: ChatMessage = {
-				text: aiResponse.text,
-				bulletPoints: aiResponse.bulletPoints || [],
-				role: 'AI',
-				imageUrl: fetchedImageUrl || '',
-				timestamp: new Date().toISOString(),
+			let aiMsg: ChatMessage
+
+			if (type === 'bulletPoints' && !inputText.includes('further')) {
+				console.log(inputText)
+				console.log(
+					'does it include further?',
+					inputText.includes('further')
+				)
+				const fetchedImageUrl = await fetchImage(userMsg.text)
+
+				aiMsg = {
+					text: aiResponse.text,
+					bulletPoints: aiResponse.bulletPoints || [],
+					role: 'AI',
+					imageUrl: fetchedImageUrl || '',
+					timestamp: new Date().toISOString(),
+				}
+			} else {
+				aiMsg = {
+					text: aiResponse.text,
+					role: 'AI',
+					timestamp: new Date().toISOString(),
+				}
 			}
 
 			await addDocument(`chats/${chatId}/messages`, aiMsg)
@@ -159,7 +175,9 @@ export default function ChatScreen() {
 					placeholderTextColor='#A0AEC0'
 					value={inputText}
 					onChangeText={setInputText}
-					onSubmitEditing={() => handleSendMessage(inputText)}
+					onSubmitEditing={() =>
+						handleSendMessage(inputText, 'bulletPoints')
+					}
 					returnKeyType='send'
 				/>
 			</View>

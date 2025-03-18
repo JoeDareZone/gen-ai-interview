@@ -13,7 +13,7 @@ export default function ChatScreen() {
 	const { id: chatId } = useLocalSearchParams()
 	const router = useRouter()
 	const { getCollection, addDocument } = useFirestore()
-	const { messages, isLoading, error, sendMessage } = useChatConversation();
+	const { messages, isLoading, error, sendMessage } = useChatConversation()
 
 	const {
 		isListening,
@@ -49,26 +49,11 @@ export default function ChatScreen() {
 		}
 	}, [chatId])
 
-	// // Update input text when transcript changes
-	// useEffect(() => {
-	// 	if (transcript) {
-	// 		setInputText(transcript)
-	// 	}
-	// }, [transcript])
-
-	// // Auto-send 2 seconds after speech stops
-	// useEffect(() => {
-	// 	if (!isListening && inputText.trim() !== '') {
-	// 		// Set a 2-second timer to auto-send the message
-	// 		autoSendTimer.current = setTimeout(() => {
-	// 			handleSendMessage()
-	// 		}, 2000)
-	// 	} else {
-	// 		if (autoSendTimer.current) {
-	// 			clearTimeout(autoSendTimer.current)
-	// 		}
-	// 	}
-	// }, [isListening, inputText])
+	useEffect(() => {
+		if (transcript) {
+			setInputText(transcript)
+		}
+	}, [transcript])
 
 	const handleSendMessage = async () => {
 		if (!inputText.trim()) return

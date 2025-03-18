@@ -1,0 +1,6 @@
+module Pods_genaiinterview {
+  umbrella header "Pods-genaiinterview-umbrella.h"
+
+  export *
+  module * { export * }
+}

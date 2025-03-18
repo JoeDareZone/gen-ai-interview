@@ -6,7 +6,6 @@ import { firestore } from '../firebaseConfig'
 interface FirestoreContextType {
 	getCollection: (collectionName: string) => Promise<any>
 	addDocument: (collectionName: string, docData: object) => Promise<void>
-	// You can add more methods as needed (e.g., updateDocument, deleteDocument)
 }
 
 const FirestoreContext = createContext<FirestoreContextType | undefined>(
@@ -14,7 +13,6 @@ const FirestoreContext = createContext<FirestoreContextType | undefined>(
 )
 
 export const FirestoreProvider = ({ children }: { children: ReactNode }) => {
-	// Example function to fetch a collection
 	const getCollection = async (collectionName: string) => {
 		const snapshot = await getDocs(collection(firestore, collectionName))
 		const data = snapshot.docs.map(doc => ({
@@ -24,7 +22,6 @@ export const FirestoreProvider = ({ children }: { children: ReactNode }) => {
 		return data
 	}
 
-	// Example function to add a document to a collection
 	const addDocument = async (collectionName: string, docData: object) => {
 		await addDoc(collection(firestore, collectionName), docData)
 	}

@@ -1,9 +1,9 @@
 // /app/chat/[id].tsx
-import AIResponse from '@/components/ui/AIResponse'
+import AIResponse, { BulletPoint } from '@/components/ui/AIResponse'
 import MicButton from '@/components/ui/MicButton'
 import { useFirestore } from '@/context/FirestoreContext'
 import { useChatConversation } from '@/hooks/useChatConversation'
-import { useWikimediaImage } from '@/hooks/useFetchImage'
+import { useFetchImage } from '@/hooks/useFetchImage'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { ChatMessage } from '@/types/chat'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -16,20 +16,14 @@ export default function ChatScreen() {
 	const router = useRouter()
 	const { getCollection, addDocument } = useFirestore()
 	const { sendMessage, isLoading } = useChatConversation()
-	const { fetchImage } = useWikimediaImage()
+	const { fetchImage } = useFetchImage()
 
-	const {
-		isListening,
-		transcript,
-		startListening,
-		stopListening,
-		isRecognized,
-	} = useSpeechToText()
+	const { isListening, transcript, startListening, stopListening } =
+		useSpeechToText()
 
 	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
 	const [inputText, setInputText] = useState('')
 	const flatListRef = useRef<FlatList>(null)
-	const autoSendTimer = useRef<NodeJS.Timeout | null>(null)
 
 	const fetchMessages = async () => {
 		try {
@@ -57,37 +51,35 @@ export default function ChatScreen() {
 		}
 	}, [transcript])
 
-	const handleSendMessage = async () => {
-		if (!inputText.trim()) return
+	const handleSendMessage = async (
+		prompt?: string,
+		type?: 'bulletPoints' | 'explainFurther'
+	) => {
+		if (!prompt) return
 
 		const userMsg: ChatMessage = {
-			text: inputText.trim(),
+			text: prompt,
 			role: 'user',
 			timestamp: new Date().toISOString(),
 		}
 
 		try {
-			// Add user's message to Firestore
 			await addDocument(`chats/${chatId}/messages`, userMsg)
 			setChatMessages(prev => [...prev, userMsg])
 			setInputText('')
 			flatListRef.current?.scrollToEnd({ animated: true })
 
-			// Generate AI response
-			const aiResponse = await sendMessage(userMsg.text)
-
+			const aiResponse = await sendMessage(userMsg.text, type)
 			const fetchedImageUrl = await fetchImage(userMsg.text)
 
-			console.log(fetchedImageUrl)
-
 			const aiMsg: ChatMessage = {
-				text: aiResponse,
+				text: aiResponse.text,
+				bulletPoints: aiResponse.bulletPoints || [],
 				role: 'AI',
 				imageUrl: fetchedImageUrl || '',
 				timestamp: new Date().toISOString(),
 			}
 
-			// Add AI message to Firestore
 			await addDocument(`chats/${chatId}/messages`, aiMsg)
 			setChatMessages(prev => [...prev, aiMsg])
 			flatListRef.current?.scrollToEnd({ animated: true })
@@ -96,9 +88,23 @@ export default function ChatScreen() {
 		}
 	}
 
+	const handleExplainBullet = (bullet: BulletPoint) => {
+		handleSendMessage(
+			`Explain more about: ${bullet.explanation}`,
+			'explainFurther'
+		)
+	}
+
 	const renderItem = ({ item }: { item: ChatMessage }) => {
 		if (item.role === 'AI') {
-			return <AIResponse response={item.text} imageUrl={item.imageUrl} />
+			return (
+				<AIResponse
+					response={item.text}
+					bulletPoints={item.bulletPoints || []}
+					imageUrl={item.imageUrl}
+					onExplainBullet={handleExplainBullet}
+				/>
+			)
 		}
 		return (
 			<View
@@ -109,6 +115,15 @@ export default function ChatScreen() {
 				}`}
 			>
 				<Text className='text-base text-gray-800'>{item.text}</Text>
+				{item.bulletPoints && (
+					<View className='mt-2'>
+						{item.bulletPoints.map((bp, idx) => (
+							<Text key={idx} className='text-sm text-gray-600'>
+								• {bp.explanation}: {bp.output}
+							</Text>
+						))}
+					</View>
+				)}
 			</View>
 		)
 	}
@@ -144,30 +159,17 @@ export default function ChatScreen() {
 					placeholderTextColor='#A0AEC0'
 					value={inputText}
 					onChangeText={setInputText}
-					onSubmitEditing={handleSendMessage}
+					onSubmitEditing={() => handleSendMessage(inputText)}
 					returnKeyType='send'
 				/>
 			</View>
 			<TouchableOpacity
 				className='w-full bg-blue-500 p-4 rounded-lg mt-2'
-				onPress={handleSendMessage}
+				onPress={() => handleSendMessage(inputText, 'bulletPoints')}
 				disabled={isLoading}
 			>
 				<Text className='text-white text-center font-bold text-lg'>
 					{isLoading ? 'Sending...' : 'Send'}
-				</Text>
-			</TouchableOpacity>
-			<TouchableOpacity
-				className='w-full bg-blue-500 p-4 rounded-lg mt-2'
-				onPress={() => {
-					fetchImage('algebra').then(url => {
-						console.log(url)
-					})
-				}}
-				disabled={isLoading}
-			>
-				<Text className='text-white text-center font-bold text-lg'>
-					{isLoading ? 'Sending...' : 'Fetch Image'}
 				</Text>
 			</TouchableOpacity>
 		</SafeAreaView>

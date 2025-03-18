@@ -1,4 +1,3 @@
-// useWikimediaImage.ts
 import { useState } from 'react'
 
 interface ImageSize {
@@ -6,7 +5,7 @@ interface ImageSize {
 	height: number
 }
 
-export function useWikimediaImage() {
+export function useFetchImage() {
 	const [imageUrl, setImageUrl] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -26,8 +25,6 @@ export function useWikimediaImage() {
 				formattedQuery
 			)}+filetype:image&srlimit=10&srnamespace=6`
 
-			console.log('Searching with URL:', searchUrl)
-
 			const searchResponse = await fetch(searchUrl)
 
 			if (!searchResponse.ok) {
@@ -35,7 +32,6 @@ export function useWikimediaImage() {
 			}
 
 			const searchData = await searchResponse.json()
-			console.log('Search response:', JSON.stringify(searchData, null, 2))
 
 			if (!searchData.query?.search?.length) {
 				// Try a more general search without filetype restriction
@@ -43,7 +39,6 @@ export function useWikimediaImage() {
 					formattedQuery
 				)}&srlimit=10&srnamespace=6`
 
-				console.log('Trying fallback search with URL:', fallbackUrl)
 				const fallbackResponse = await fetch(fallbackUrl)
 				const fallbackData = await fallbackResponse.json()
 
@@ -59,24 +54,17 @@ export function useWikimediaImage() {
 			// Try each search result until we find a suitable image
 			for (const result of searchData.query.search) {
 				const title = result.title
-				console.log('Trying image:', title)
 
 				// Get detailed image info - use the raw title without additional encoding
 				const imageUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=url|size|dimensions&titles=${title}`
 
-				console.log('Fetching image info from:', imageUrl)
 				const imageResponse = await fetch(imageUrl)
 
 				if (!imageResponse.ok) {
-					console.log('Failed to fetch image info for:', title)
 					continue // Try next result if this one fails
 				}
 
 				const imageData = await imageResponse.json()
-				console.log(
-					'Image info response:',
-					JSON.stringify(imageData, null, 2)
-				)
 
 				const pages = imageData.query.pages
 				const page = pages[Object.keys(pages)[0]]
@@ -90,16 +78,8 @@ export function useWikimediaImage() {
 						imageInfo.width >= preferredSize.width &&
 						imageInfo.height >= preferredSize.height
 					) {
-						console.log('Found suitable image:', url)
 						setImageUrl(url)
 						return url
-					} else {
-						console.log(
-							'Image dimensions not suitable:',
-							imageInfo.width,
-							'x',
-							imageInfo.height
-						)
 					}
 				}
 			}

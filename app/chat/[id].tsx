@@ -1,116 +1,73 @@
-// /app/tabs/chat/[chatId].tsx
-import { useChat } from '@/context/ChatContext'
 import { useFirestore } from '@/context/FirestoreContext'
-import { firestore } from '@/firebaseConfig'
 import { useOpenAI } from '@/hooks/useOpenAI'
 import { ChatMessage } from '@/types/chat'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { collection, onSnapshot } from 'firebase/firestore'
 import React, { useEffect, useRef, useState } from 'react'
-import {
-	ActivityIndicator,
-	FlatList,
-	Text,
-	TextInput,
-	TouchableOpacity,
-	View,
-} from 'react-native'
+import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function ChatScreen() {
 	const { id: chatId } = useLocalSearchParams()
 	const router = useRouter()
-	const { addDocument, getSubcollection } = useFirestore()
+	const { getCollection, addDocument } = useFirestore()
+	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
 	const [newMessage, setNewMessage] = useState('')
 	const flatListRef = useRef<FlatList>(null)
-	const { isLoading, error, fetchMessages } = useChat(chatId as string)
-	const [messages, setMessages] = useState<ChatMessage[]>([])
-	const {
-		generateCompletion,
-		isLoading: isGenerating,
-		completion,
-	} = useOpenAI()
+	const { generateCompletion, isLoading } = useOpenAI()
 
-	const getMessages = async () => {
-		const messages = await getSubcollection(`chats/${chatId}`, 'messages')
-		setMessages(messages)
-		console.log('Messages fetched:', messages)
-		return messages
+	// Fetch messages from Firestore for this chat
+	const fetchMessages = async () => {
+		try {
+			const messages = await getCollection(`chats/${chatId}/messages`)
+			// Sort messages in ascending order based on the timestamp
+			const sortedMessages = messages.sort(
+				(
+					a: { timestamp: string | number | Date },
+					b: { timestamp: string | number | Date }
+				) =>
+					new Date(a.timestamp).getTime() -
+					new Date(b.timestamp).getTime()
+			)
+			setChatMessages(sortedMessages)
+			console.log('Messages fetched:', sortedMessages)
+		} catch (error) {
+			console.error('Error fetching messages:', error)
+		}
 	}
 
-	// Inside your ChatScreen component:
-
 	useEffect(() => {
 		if (chatId) {
-			// Listen to changes in the messages subcollection for this chat
-			const messagesRef = collection(
-				firestore,
-				`chats/${chatId}/messages`
-			)
-			const unsubscribe = onSnapshot(messagesRef, snapshot => {
-				const msgs = snapshot.docs.map(doc => ({
-					id: doc.id,
-					...doc.data(),
-				}))
-				console.log('Real-time messages:', msgs)
-				setMessages(msgs as unknown as ChatMessage[])
-				// Optionally, scroll to bottom after update
-				setTimeout(
-					() => flatListRef.current?.scrollToEnd({ animated: true }),
-					100
-				)
-			})
-
-			// Cleanup the listener on unmount
-			return () => unsubscribe()
-		}
-	}, [chatId])
-
-	useEffect(() => {
-		if (chatId) {
-			getMessages()
+			fetchMessages()
 		}
 	}, [chatId])
 
 	const handleSendMessage = async () => {
 		if (!newMessage.trim()) return
 
-		const userMessage = {
+		// Create and add the user's message to Firestore
+		const userMsg: ChatMessage = {
 			text: newMessage.trim(),
 			role: 'user',
 			timestamp: new Date().toISOString(),
 		}
 
 		try {
-			await addDocument(`chats/${chatId}/messages`, userMessage)
+			await addDocument(`chats/${chatId}/messages`, userMsg)
+			setChatMessages(prev => [...prev, userMsg])
+			setNewMessage('')
+			flatListRef.current?.scrollToEnd({ animated: true })
 
-			const aiResponse = await generateCompletion(newMessage.trim())
-				.then(response => {
-					console.log('AI response:', response)
-					return response
-				})
-				.catch(error => {
-					console.error('Error generating AI response:', error)
-					return null
-				})
-
-			if (!aiResponse) {
-				console.error('No AI response received')
-				return
-			}
-
-			const aiMessage = {
-				text: aiResponse,
+			// Generate AI response based on the prompt
+			const aiResponse = await generateCompletion(userMsg.text)
+			const aiMsg: ChatMessage = {
+				text: aiResponse || 'Error generating response',
 				role: 'AI',
 				timestamp: new Date().toISOString(),
 			}
-			await addDocument(`chats/${chatId}/messages`, aiMessage)
 
-			// Refresh messages
-			await getMessages()
-
-			// Clear input and scroll to bottom
-			setNewMessage('')
+			// Add the AI message to Firestore
+			await addDocument(`chats/${chatId}/messages`, aiMsg)
+			setChatMessages(prev => [...prev, aiMsg])
 			flatListRef.current?.scrollToEnd({ animated: true })
 		} catch (error) {
 			console.error('Error handling message:', error)
@@ -140,7 +97,7 @@ export default function ChatScreen() {
 			</View>
 			<FlatList
 				ref={flatListRef}
-				data={messages}
+				data={chatMessages}
 				keyExtractor={(item, index) => index.toString()}
 				renderItem={renderItem}
 				contentContainerStyle={{ paddingBottom: 20 }}
@@ -148,14 +105,6 @@ export default function ChatScreen() {
 					flatListRef.current?.scrollToEnd({ animated: true })
 				}
 			/>
-			{isGenerating && (
-				<View className='flex-row items-center justify-center py-2'>
-					<ActivityIndicator size='small' color='#3b82f6' />
-					<Text className='ml-2 text-gray-600'>
-						AI is thinking...
-					</Text>
-				</View>
-			)}
 			<TextInput
 				className='w-full h-16 border border-gray-300 rounded-lg bg-white px-4 text-lg'
 				placeholder='Type your message...'
@@ -168,9 +117,10 @@ export default function ChatScreen() {
 			<TouchableOpacity
 				className='w-full bg-blue-500 p-4 rounded-lg mt-2'
 				onPress={handleSendMessage}
+				disabled={isLoading}
 			>
 				<Text className='text-white text-center font-bold text-lg'>
-					Send
+					{isLoading ? 'Sending...' : 'Send'}
 				</Text>
 			</TouchableOpacity>
 		</SafeAreaView>

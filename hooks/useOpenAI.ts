@@ -11,7 +11,7 @@ interface UseOpenAIResult {
 	completion: string | null
 	isLoading: boolean
 	error: Error | null
-	generateCompletion: (prompt: string) => Promise<void>
+	generateCompletion: (prompt: string) => Promise<string>
 }
 
 export function useOpenAI(options: UseOpenAIOptions = {}): UseOpenAIResult {
@@ -23,7 +23,7 @@ export function useOpenAI(options: UseOpenAIOptions = {}): UseOpenAIResult {
 		apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
 	})
 
-	const generateCompletion = async (prompt: string) => {
+	const generateCompletion = async (prompt: string): Promise<string> => {
 		console.log('Generating completion...')
 		try {
 			setIsLoading(true)
@@ -41,15 +41,25 @@ export function useOpenAI(options: UseOpenAIOptions = {}): UseOpenAIResult {
 				temperature: options.temperature || 0.7,
 			})
 
-			setCompletion(response.choices[0].message.content)
-			console.log(
-				'Completion generated:',
+			if (
+				response &&
+				response.choices &&
+				response.choices[0] &&
+				response.choices[0].message &&
 				response.choices[0].message.content
-			)
+			) {
+				const generatedText = response.choices[0].message.content.trim()
+				setCompletion(generatedText)
+				console.log('Completion generated:', generatedText)
+				return generatedText
+			} else {
+				throw new Error('Invalid response structure')
+			}
 		} catch (err) {
-			setError(
+			const errorObj =
 				err instanceof Error ? err : new Error('An error occurred')
-			)
+			setError(errorObj)
+			throw errorObj
 		} finally {
 			setIsLoading(false)
 		}

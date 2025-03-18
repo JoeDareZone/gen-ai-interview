@@ -1,7 +1,9 @@
 // /app/chat/[id].tsx
+import AIResponse from '@/components/ui/AIResponse'
 import MicButton from '@/components/ui/MicButton'
 import { useFirestore } from '@/context/FirestoreContext'
 import { useChatConversation } from '@/hooks/useChatConversation'
+import { useWikimediaImage } from '@/hooks/useFetchImage'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { ChatMessage } from '@/types/chat'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -13,7 +15,8 @@ export default function ChatScreen() {
 	const { id: chatId } = useLocalSearchParams()
 	const router = useRouter()
 	const { getCollection, addDocument } = useFirestore()
-	const { messages, isLoading, error, sendMessage } = useChatConversation()
+	const { sendMessage, isLoading } = useChatConversation()
+	const { fetchImage } = useWikimediaImage()
 
 	const {
 		isListening,
@@ -28,14 +31,13 @@ export default function ChatScreen() {
 	const flatListRef = useRef<FlatList>(null)
 	const autoSendTimer = useRef<NodeJS.Timeout | null>(null)
 
-	// Fetch messages and sort them by timestamp (oldest first)
 	const fetchMessages = async () => {
 		try {
 			const messages = await getCollection(`chats/${chatId}/messages`)
 			const sortedMessages = messages.sort(
 				(a: ChatMessage, b: ChatMessage) =>
-					new Date(a.timestamp).getTime() -
-					new Date(b.timestamp).getTime()
+					new Date(a.timestamp || '').getTime() -
+					new Date(b.timestamp || '').getTime()
 			)
 			setChatMessages(sortedMessages)
 		} catch (error) {
@@ -71,11 +73,17 @@ export default function ChatScreen() {
 			setInputText('')
 			flatListRef.current?.scrollToEnd({ animated: true })
 
-			// Generate AI response based on the user's message
+			// Generate AI response
 			const aiResponse = await sendMessage(userMsg.text)
+
+			const fetchedImageUrl = await fetchImage(userMsg.text)
+
+			console.log(fetchedImageUrl)
+
 			const aiMsg: ChatMessage = {
-				text: aiResponse || 'Error generating response',
+				text: aiResponse,
 				role: 'AI',
+				imageUrl: fetchedImageUrl || '',
 				timestamp: new Date().toISOString(),
 			}
 
@@ -88,17 +96,22 @@ export default function ChatScreen() {
 		}
 	}
 
-	const renderItem = ({ item }: { item: ChatMessage }) => (
-		<View
-			className={`p-3 rounded-lg my-2 mx-4 ${
-				item.role === 'user'
-					? 'bg-blue-200 self-end'
-					: 'bg-white self-start'
-			}`}
-		>
-			<Text className='text-base text-gray-800'>{item.text}</Text>
-		</View>
-	)
+	const renderItem = ({ item }: { item: ChatMessage }) => {
+		if (item.role === 'AI') {
+			return <AIResponse response={item.text} imageUrl={item.imageUrl} />
+		}
+		return (
+			<View
+				className={`p-3 rounded-lg my-2 mx-4 ${
+					item.role === 'user'
+						? 'bg-blue-200 self-end'
+						: 'bg-white self-start'
+				}`}
+			>
+				<Text className='text-base text-gray-800'>{item.text}</Text>
+			</View>
+		)
+	}
 
 	return (
 		<SafeAreaView className='flex-1 bg-blue-50 p-4'>
@@ -142,6 +155,19 @@ export default function ChatScreen() {
 			>
 				<Text className='text-white text-center font-bold text-lg'>
 					{isLoading ? 'Sending...' : 'Send'}
+				</Text>
+			</TouchableOpacity>
+			<TouchableOpacity
+				className='w-full bg-blue-500 p-4 rounded-lg mt-2'
+				onPress={() => {
+					fetchImage('algebra').then(url => {
+						console.log(url)
+					})
+				}}
+				disabled={isLoading}
+			>
+				<Text className='text-white text-center font-bold text-lg'>
+					{isLoading ? 'Sending...' : 'Fetch Image'}
 				</Text>
 			</TouchableOpacity>
 		</SafeAreaView>

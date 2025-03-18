@@ -1,9 +1,11 @@
 import OpenAI from 'openai'
 import { useState } from 'react'
 
-interface ChatMessage {
+export interface ChatMessage {
 	role: 'system' | 'user' | 'assistant'
 	content: string
+	imageUrl?: string
+	timestamp?: string
 }
 
 interface UseChatConversationOptions {
@@ -22,12 +24,12 @@ interface UseChatConversationResult {
 export function useChatConversation(
 	options: UseChatConversationOptions = {}
 ): UseChatConversationResult {
-	// Start with a system message to set context
+	// Initialize with a system prompt that instructs the AI on formatting.
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{
 			role: 'system',
 			content:
-				'You are a helpful educational assistant. Please provide clear, bullet-pointed answers and include relevant images links when possible.',
+				'You are a helpful educational assistant. Provide clear bullet-pointed answers. For example: "- Key point 1\n- Key point 2\n- ',
 		},
 	])
 	const [isLoading, setIsLoading] = useState(false)
@@ -37,17 +39,18 @@ export function useChatConversation(
 		apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
 	})
 
-	// sendMessage appends the user message, calls OpenAI, and appends the assistant's reply.
+	// sendMessage appends the user message, sends the full conversation history to OpenAI,
+	// then parses and appends the assistant's reply.
 	const sendMessage = async (prompt: string): Promise<string> => {
-		console.log('prompt', prompt)
 		if (!prompt.trim()) return ''
 		setIsLoading(true)
 		setError(null)
 
-		// Append user's message to the conversation history
+		// Append user's message to the conversation history (without timestamp for conversation context)
 		const newUserMessage: ChatMessage = {
 			role: 'user',
 			content: prompt.trim(),
+			timestamp: new Date().toISOString(),
 		}
 		const updatedHistory = [...messages, newUserMessage]
 
@@ -59,14 +62,16 @@ export function useChatConversation(
 				temperature: options.temperature || 0.7,
 			})
 
-			// Extract and trim the AI's reply
 			const aiReply = response.choices[0].message.content?.trim() || ''
+			// Parse the assistant's reply for image links
 			const newAssistantMessage: ChatMessage = {
 				role: 'assistant',
 				content: aiReply,
+				timestamp: new Date().toISOString(),
 			}
 
-			// Update conversation history with both messages
+			console.log(newAssistantMessage)
+
 			setMessages([...updatedHistory, newAssistantMessage])
 
 			return aiReply

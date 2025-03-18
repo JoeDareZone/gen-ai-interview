@@ -2,6 +2,7 @@
 export interface ChatMessage {
 	text: string
 	role: 'user' | 'AI'
+	imageUrl?: string
 	timestamp?: string
 }
 

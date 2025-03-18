@@ -21,6 +21,11 @@ export default function AIResponse({
 					source={{ uri: imageUrl }}
 					className='w-full h-48 rounded mb-4'
 					resizeMode='contain'
+					style={{
+						width: '100%',
+						height: 192,
+						objectFit: 'contain',
+					}}
 				/>
 			)}
 			{response.length > 0 && (

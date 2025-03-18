@@ -19,10 +19,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function ChatScreen() {
-	const { id: chatId } = useLocalSearchParams()
+	const { id: chatId, grade, aiPersonality } = useLocalSearchParams()
 	const router = useRouter()
 	const { getCollection, addDocument } = useFirestore()
-	const { sendMessage, isLoading } = useChatConversation()
+	const { sendMessage, isLoading } = useChatConversation({
+		studentProfile: {
+			grade: grade as string,
+			aiPersonality: aiPersonality as string,
+		},
+	})
 	const { fetchImage } = useFetchImage()
 	const { isListening, transcript, startListening, stopListening } =
 		useSpeechToText()
@@ -80,6 +85,12 @@ export default function ChatScreen() {
 	) => {
 		if (!prompt) return
 
+		const fetchedImageUrl = await fetchImage(prompt)
+
+		if (type === 'explainFurther') {
+			prompt = `Can you elaborate further on the following point: "${prompt}"? Please provide more detail and an example.`
+		}
+
 		const userMsg: ChatMessage = {
 			text: prompt,
 			role: 'user',
@@ -95,22 +106,21 @@ export default function ChatScreen() {
 			const aiResponse = await sendMessage(userMsg.text, type)
 
 			let aiMsg: ChatMessage
-			if (type === 'bulletPoints' && !prompt.includes('further')) {
-				const fetchedImageUrl = await fetchImage(userMsg.text)
-				aiMsg = {
-					text: aiResponse.text,
-					bulletPoints: aiResponse.bulletPoints || [],
-					role: 'AI',
-					imageUrl: fetchedImageUrl || '',
-					timestamp: new Date().toISOString(),
-				}
-			} else {
-				aiMsg = {
-					text: aiResponse.text,
-					role: 'AI',
-					timestamp: new Date().toISOString(),
-				}
+			// if (type === 'bulletPoints' && !prompt.includes('further')) {
+			console.log('getting bullet points')
+			aiMsg = {
+				text: aiResponse.text,
+				bulletPoints: aiResponse.bulletPoints || [],
+				role: 'AI',
+				imageUrl: fetchedImageUrl || '',
+				timestamp: new Date().toISOString(),
 			}
+			console.log('aiMsg', aiMsg)
+			// aiMsg = {
+			// 	text: aiResponse.text,
+			// 	role: 'AI',
+			// 	timestamp: new Date().toISOString(),
+			// }
 
 			await addDocument(`chats/${chatId}/messages`, aiMsg)
 			setChatMessages(prev => [...prev, aiMsg])
@@ -121,10 +131,7 @@ export default function ChatScreen() {
 	}
 
 	const handleExplainBullet = (bullet: BulletPoint) => {
-		handleSendMessage(
-			`Can you elaborate further on the following point: "${bullet.explanation}"? Please provide more detail and an example.`,
-			'explainFurther'
-		)
+		handleSendMessage(`${bullet.explanation}`, 'explainFurther')
 	}
 
 	const renderItem = ({ item }: { item: ChatMessage }) => {

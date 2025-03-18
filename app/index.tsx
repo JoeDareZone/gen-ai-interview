@@ -47,7 +47,7 @@ export default function HomeScreen() {
 				chatId,
 				createdAt: new Date().toISOString(),
 			})
-			router.push(`/chat/${chatId}`)
+			router.push(`/StudentProfileSetup?chatId=${chatId}`)
 		} catch (error) {
 			console.error('Error creating chat:', error)
 		}

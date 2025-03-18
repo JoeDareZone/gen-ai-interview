@@ -18,6 +18,10 @@ export interface UseChatConversationOptions {
 	model?: string
 	maxTokens?: number
 	temperature?: number
+	studentProfile?: {
+		grade: string
+		aiPersonality: string
+	}
 }
 
 export interface UseChatConversationResult {

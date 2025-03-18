@@ -44,6 +44,13 @@ export default function RootLayout() {
 								headerShown: false,
 							}}
 						/>
+						<Stack.Screen
+							name='StudentProfileSetup'
+							options={{
+								title: 'Student Profile Setup',
+								headerShown: false,
+							}}
+						/>
 					</Stack>
 				</ChatProvider>
 				<StatusBar style='auto' />

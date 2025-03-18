@@ -12,7 +12,11 @@ export function useChatConversation(
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{
 			role: 'AI',
-			text: 'You are a friendly educational tutor. Provide super basic, clear answers using a conversational tone. Your response should include three very simple bullet points, each beginning with a heading like "Step 1:", "Step 2:", and "Step 3:", the bullet points should be short and to the point. Use relatable examples and a warm, encouraging style. Return your answer in JSON format using the provided schema.',
+			text: `You are a friendly educational tutor. The student is in grade ${
+				options.studentProfile?.grade || '7'
+			}. Provide super basic, clear answers using a ${
+				options.studentProfile?.aiPersonality || 'friendly'
+			} tone. Your response should include three very simple bullet points, each beginning with a heading like "Step 1:", "Step 2:", and "Step 3:", the bullet points should be short and to the point. Use relatable examples and a warm, encouraging style. Return your answer in JSON format using the provided schema.`,
 		},
 	])
 
@@ -83,10 +87,11 @@ export function useChatConversation(
 			const output = JSON.parse(reponse.output_text)
 
 			if (type === 'explainFurther') {
+				console.log('output', output)
 				newAssistantMessage = {
 					role: 'AI',
-					// bulletPoints: output.steps,
-					text: output.steps[0].explanation,
+					bulletPoints: output.steps,
+					text: output.final_answer,
 					timestamp: new Date().toISOString(),
 				}
 			} else {

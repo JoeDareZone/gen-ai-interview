@@ -489,6 +489,11 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>react-native-voice.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>react-native-webview.xcscheme</key>
 		<dict>
 			<key>isShown</key>

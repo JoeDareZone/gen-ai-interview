@@ -10,11 +10,15 @@
 		"newArchEnabled": true,
 		"ios": {
 			"supportsTablet": true,
-			"bundleIdentifier": "in",
+			"bundleIdentifier": "com.genaiinterview",
 			"config": {
 				"googleSignIn": {
 					"reservedClientId": "com.googleusercontent.apps.17932247463-k6ju9uqdnkuef9c6l1chs8ijbg8l8gt1"
 				}
+			},
+			"infoPlist": {
+				"NSSpeechRecognitionUsageDescription": "This app uses speech recognition to convert your voice into text messages.",
+				"NSMicrophoneUsageDescription": "This app needs access to the microphone to record your voice messages."
 			}
 		},
 		"android": {
@@ -38,6 +42,13 @@
 					"imageWidth": 200,
 					"resizeMode": "contain",
 					"backgroundColor": "#ffffff"
+				}
+			],
+			[
+				"@react-native-voice/voice",
+				{
+					"microphonePermission": "CUSTOM: Allow $(PRODUCT_NAME) to access the microphone",
+					"speechRecognitionPermission": "CUSTOM: Allow $(PRODUCT_NAME) to securely recognize user speech"
 				}
 			]
 		],

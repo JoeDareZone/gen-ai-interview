@@ -1,5 +1,6 @@
 import { useFirestore } from '@/context/FirestoreContext'
 import { useOpenAI } from '@/hooks/useOpenAI'
+import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { ChatMessage } from '@/types/chat'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
@@ -14,6 +15,9 @@ export default function ChatScreen() {
 	const [newMessage, setNewMessage] = useState('')
 	const flatListRef = useRef<FlatList>(null)
 	const { generateCompletion, isLoading } = useOpenAI()
+	const { isListening, transcript, startListening, stopListening } =
+		useSpeechToText()
+	const [inputText, setInputText] = useState('')
 
 	// Fetch messages from Firestore for this chat
 	const fetchMessages = async () => {
@@ -40,6 +44,12 @@ export default function ChatScreen() {
 			fetchMessages()
 		}
 	}, [chatId])
+
+	useEffect(() => {
+		if (transcript) {
+			setInputText(transcript)
+		}
+	}, [transcript])
 
 	const handleSendMessage = async () => {
 		if (!newMessage.trim()) return
@@ -122,6 +132,12 @@ export default function ChatScreen() {
 				<Text className='text-white text-center font-bold text-lg'>
 					{isLoading ? 'Sending...' : 'Send'}
 				</Text>
+			</TouchableOpacity>
+			<TouchableOpacity
+				onPress={isListening ? stopListening : startListening}
+				className='bg-gray-200 p-2 rounded-full mr-2'
+			>
+				<Text>{isListening ? 'Stop' : 'Speak'}</Text>
 			</TouchableOpacity>
 		</SafeAreaView>
 	)

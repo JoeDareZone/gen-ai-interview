@@ -41,9 +41,11 @@ export function useOpenAI(options: UseOpenAIOptions = {}): UseOpenAIResult {
 				temperature: options.temperature || 0.7,
 			})
 
-			console.log(response.choices[0].message.content)
-
 			setCompletion(response.choices[0].message.content)
+			console.log(
+				'Completion generated:',
+				response.choices[0].message.content
+			)
 		} catch (err) {
 			setError(
 				err instanceof Error ? err : new Error('An error occurred')

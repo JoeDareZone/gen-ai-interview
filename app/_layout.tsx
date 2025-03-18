@@ -1,4 +1,5 @@
 import { AuthProvider } from '@/context/AuthContext'
+import { ChatProvider } from '@/context/ChatContext'
 import { FirestoreProvider } from '@/context/FirestoreContext'
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
@@ -28,13 +29,22 @@ export default function RootLayout() {
 	return (
 		<AuthProvider>
 			<FirestoreProvider>
-				<Stack>
-					<Stack.Screen
-						name='(tabs)'
-						options={{ headerShown: false }}
-					/>
-					<Stack.Screen name='+not-found' />
-				</Stack>
+				<ChatProvider>
+					<Stack>
+						<Stack.Screen
+							name='(tabs)'
+							options={{
+								headerShown: false,
+							}}
+						/>
+						<Stack.Screen
+							name='chat/[id]'
+							options={{
+								title: 'Chat',
+							}}
+						/>
+					</Stack>
+				</ChatProvider>
 				<StatusBar style='auto' />
 			</FirestoreProvider>
 		</AuthProvider>

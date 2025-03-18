@@ -1,17 +1,10 @@
-// /app/tabs/index.tsx
+import { useFirestore } from '@/context/FirestoreContext'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
-import {
-	FlatList,
-	SafeAreaView,
-	Text,
-	TouchableOpacity,
-	View,
-} from 'react-native'
+import { FlatList, Text, TouchableOpacity, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import uuid from 'react-native-uuid'
-
-import { useFirestore } from '@/context/FirestoreContext'
 
 interface Chat {
 	id: string
@@ -31,7 +24,12 @@ export default function HomeScreen() {
 			setLoading(true)
 			try {
 				const data = await getCollection('chats')
-				setChats(data)
+				const sortedChats = [...data].sort(
+					(a, b) =>
+						new Date(b.createdAt).getTime() -
+						new Date(a.createdAt).getTime()
+				)
+				setChats(sortedChats)
 			} catch (error) {
 				console.error('Error fetching chats:', error)
 			} finally {
@@ -43,7 +41,7 @@ export default function HomeScreen() {
 	}, [])
 
 	const createNewChat = async () => {
-		const chatId = uuid.v4()
+		const chatId = uuid.v4().toString()
 		try {
 			await addDocument('chats', {
 				chatId,
@@ -57,13 +55,13 @@ export default function HomeScreen() {
 
 	const renderItem = ({ item }: { item: Chat }) => (
 		<TouchableOpacity
-			className='bg-white p-4 rounded-2xl shadow-sm mb-4 border border-gray-100'
+			className='bg-white p-4 rounded-2xl shadow-sm mb-4 border border-gray-200 mx-2'
 			onPress={() => router.push(`/chat/${item.chatId}`)}
 		>
 			<View className='flex-row items-center justify-between'>
 				<View className='flex-1'>
 					<Text className='text-xl font-semibold text-gray-800 mb-1'>
-						{item.title || `Chat ${item.chatId}`}
+						{item.title || `Chat ${item.chatId.substring(0, 8)}`}
 					</Text>
 					<Text className='text-sm text-gray-500'>
 						{new Date(item.createdAt).toLocaleString()}
@@ -75,12 +73,15 @@ export default function HomeScreen() {
 	)
 
 	return (
-		<SafeAreaView className='flex-1 bg-gray-50'>
-			<View className='px-4 pt-6 pb-4 bg-white border-b border-gray-100'>
-				<Text className='text-3xl font-bold text-gray-800'>Chats</Text>
+		<SafeAreaView className='flex-1 bg-white'>
+			{/* Header */}
+			<View className='px-4 pt-6 pb-4 bg-white border-b border-gray-200'>
+				<Text className='text-3xl font-bold text-gray-800 text-center'>
+					Chat List
+				</Text>
 			</View>
-
-			<View className='flex-1 px-4 pt-4'>
+			{/* Chat List */}
+			<View className='flex-1 px-4 pt-4 bg-gray-100'>
 				{loading ? (
 					<View className='flex-1 items-center justify-center'>
 						<Text className='text-gray-500 text-lg'>
@@ -92,14 +93,14 @@ export default function HomeScreen() {
 						data={chats}
 						keyExtractor={item => item.id}
 						renderItem={renderItem}
-						contentContainerClassName='pb-4'
+						contentContainerStyle={{ paddingBottom: 16 }}
 					/>
 				)}
 			</View>
-
-			<View className='p-4 bg-white border-t border-gray-100'>
+			{/* New Chat Button */}
+			<View className='p-4 bg-white border-t border-gray-200'>
 				<TouchableOpacity
-					className='bg-blue-500 p-4 rounded-2xl shadow-sm flex-row items-center justify-center space-x-2'
+					className='bg-purple-600 p-4 rounded-2xl shadow-sm flex-row items-center justify-center space-x-2'
 					onPress={createNewChat}
 				>
 					<Ionicons name='add-circle' size={24} color='white' />

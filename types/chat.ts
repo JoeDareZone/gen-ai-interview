@@ -3,7 +3,7 @@ export interface ChatMessage {
 	text: string
 	imageUrl?: string
 	timestamp?: string
-	bulletPoints?: Array<{ explanation: string; output: string }>
+	bulletPoints?: Array<{ heading: string; explanation: string; output: string }>
 }
 
 export interface UseChatFirebaseReturn {

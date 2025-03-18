@@ -32,7 +32,7 @@ export default function RootLayout() {
 				<ChatProvider>
 					<Stack>
 						<Stack.Screen
-							name='(tabs)'
+							name='index'
 							options={{
 								headerShown: false,
 							}}
@@ -41,6 +41,7 @@ export default function RootLayout() {
 							name='chat/[id]'
 							options={{
 								title: 'Chat',
+								headerShown: false,
 							}}
 						/>
 					</Stack>

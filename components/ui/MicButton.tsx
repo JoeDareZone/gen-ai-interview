@@ -47,7 +47,6 @@ export default function MicButton({ isListening, onPress }: MicButtonProps) {
 					size={24}
 					color={isListening ? 'red' : 'black'}
 				/>
-
 			</Animated.View>
 		</TouchableOpacity>
 	)

@@ -6,10 +6,11 @@ export const chatSchema = {
 			items: {
 				type: 'object',
 				properties: {
+					heading: { type: 'string' },
 					explanation: { type: 'string' },
 					output: { type: 'string' },
 				},
-				required: ['explanation', 'output'],
+				required: ['heading', 'explanation', 'output'],
 				additionalProperties: false,
 			},
 		},

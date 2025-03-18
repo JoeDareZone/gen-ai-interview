@@ -1,5 +1,5 @@
-// /app/chat/[id].tsx
-import AIResponse, { BulletPoint } from '@/components/ui/AIResponse'
+import AIResponse from '@/components/ui/AIResponse'
+import { BulletPoint } from '@/components/ui/CollapsibleBullet'
 import MicButton from '@/components/ui/MicButton'
 import { useFirestore } from '@/context/FirestoreContext'
 import { useChatConversation } from '@/hooks/useChatConversation'
@@ -8,7 +8,14 @@ import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { ChatMessage } from '@/types/chat'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
-import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import {
+	ActivityIndicator,
+	FlatList,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function ChatScreen() {
@@ -17,14 +24,15 @@ export default function ChatScreen() {
 	const { getCollection, addDocument } = useFirestore()
 	const { sendMessage, isLoading } = useChatConversation()
 	const { fetchImage } = useFetchImage()
-
 	const { isListening, transcript, startListening, stopListening } =
 		useSpeechToText()
 
 	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
 	const [inputText, setInputText] = useState('')
 	const flatListRef = useRef<FlatList>(null)
+	const autoSendTimer = useRef<NodeJS.Timeout | null>(null)
 
+	// Fetch messages and sort them by timestamp (oldest first)
 	const fetchMessages = async () => {
 		try {
 			const messages = await getCollection(`chats/${chatId}/messages`)
@@ -45,11 +53,26 @@ export default function ChatScreen() {
 		}
 	}, [chatId])
 
+	// Update input text when transcript updates
 	useEffect(() => {
 		if (transcript) {
 			setInputText(transcript)
 		}
 	}, [transcript])
+
+	// Auto-send 2 seconds after speech stops
+	useEffect(() => {
+		if (!isListening && inputText.trim() !== '') {
+			autoSendTimer.current = setTimeout(() => {
+				handleSendMessage(inputText, 'bulletPoints')
+			}, 2000)
+		} else if (isListening && autoSendTimer.current) {
+			clearTimeout(autoSendTimer.current)
+		}
+		return () => {
+			if (autoSendTimer.current) clearTimeout(autoSendTimer.current)
+		}
+	}, [isListening, inputText])
 
 	const handleSendMessage = async (
 		prompt?: string,
@@ -72,15 +95,8 @@ export default function ChatScreen() {
 			const aiResponse = await sendMessage(userMsg.text, type)
 
 			let aiMsg: ChatMessage
-
-			if (type === 'bulletPoints' && !inputText.includes('further')) {
-				console.log(inputText)
-				console.log(
-					'does it include further?',
-					inputText.includes('further')
-				)
+			if (type === 'bulletPoints' && !prompt.includes('further')) {
 				const fetchedImageUrl = await fetchImage(userMsg.text)
-
 				aiMsg = {
 					text: aiResponse.text,
 					bulletPoints: aiResponse.bulletPoints || [],
@@ -106,7 +122,7 @@ export default function ChatScreen() {
 
 	const handleExplainBullet = (bullet: BulletPoint) => {
 		handleSendMessage(
-			`Explain more about: ${bullet.explanation}`,
+			`Can you elaborate further on the following point: "${bullet.explanation}"? Please provide more detail and an example.`,
 			'explainFurther'
 		)
 	}
@@ -123,56 +139,61 @@ export default function ChatScreen() {
 			)
 		}
 		return (
-			<View
-				className={`p-3 rounded-lg my-2 mx-4 ${
-					item.role === 'user'
-						? 'bg-blue-200 self-end'
-						: 'bg-white self-start'
-				}`}
-			>
+			<View className='self-end bg-gray-200 p-3 rounded-lg my-2 max-w-[80%]'>
 				<Text className='text-base text-gray-800'>{item.text}</Text>
-				{item.bulletPoints && (
-					<View className='mt-2'>
-						{item.bulletPoints.map((bp, idx) => (
-							<Text key={idx} className='text-sm text-gray-600'>
-								• {bp.explanation}: {bp.output}
-							</Text>
-						))}
-					</View>
-				)}
 			</View>
 		)
 	}
 
 	return (
-		<SafeAreaView className='flex-1 bg-blue-50 p-4'>
-			<View className='flex-row justify-between items-center mb-4'>
+		<SafeAreaView className='flex-1 bg-white p-4'>
+			{/* Header */}
+			<View className='flex-row items-center mb-4 py-2 border-b border-gray-300'>
 				<TouchableOpacity onPress={() => router.back()} className='p-2'>
-					<Text className='text-lg font-bold'>&larr; Back</Text>
+					<Text className='text-lg font-bold text-gray-800'>
+						&larr; Back
+					</Text>
 				</TouchableOpacity>
-				<Text className='text-xl font-bold'>Chat {chatId}</Text>
-				<View className='p-2' />
+				<Text className='flex-1 text-center text-2xl font-bold text-gray-800'>
+					Chat {chatId.toString().substring(0, 2)}
+				</Text>
+				<View className='w-12' />
 			</View>
+			{/* Chat messages */}
 			<FlatList
 				ref={flatListRef}
 				data={chatMessages}
-				keyExtractor={(item, index) => index.toString()}
+				keyExtractor={(_, index) => index.toString()}
 				renderItem={renderItem}
 				contentContainerStyle={{ paddingBottom: 20 }}
 				onContentSizeChange={() =>
 					flatListRef.current?.scrollToEnd({ animated: true })
 				}
+				ListFooterComponent={
+					<View>
+						{isLoading && (
+							<View className='h-10'>
+								<ActivityIndicator size='small' color='#000' />
+							</View>
+						)}
+					</View>
+				}
+				ListEmptyComponent={
+					<View className='h-10 items-center justify-center'>
+						<Text className='text-gray-500'>Ask me anything!</Text>
+					</View>
+				}
 			/>
-			{/* Chat input area with voice input */}
+			{/* Input area */}
 			<View className='flex-row items-center mt-4'>
 				<MicButton
 					isListening={isListening}
 					onPress={isListening ? stopListening : startListening}
 				/>
 				<TextInput
-					className='flex-1 h-16 border border-gray-300 rounded-lg bg-white px-4 text-lg'
+					className='flex-1 h-12 border border-gray-300 rounded-lg bg-white px-3 text-lg ml-3'
 					placeholder='Type or speak your message...'
-					placeholderTextColor='#A0AEC0'
+					placeholderTextColor='#9E9E9E'
 					value={inputText}
 					onChangeText={setInputText}
 					onSubmitEditing={() =>
@@ -182,11 +203,11 @@ export default function ChatScreen() {
 				/>
 			</View>
 			<TouchableOpacity
-				className='w-full bg-blue-500 p-4 rounded-lg mt-2'
+				className='w-full bg-purple-700 p-3 rounded-lg mt-3 items-center'
 				onPress={() => handleSendMessage(inputText, 'bulletPoints')}
 				disabled={isLoading}
 			>
-				<Text className='text-white text-center font-bold text-lg'>
+				<Text className='text-white font-bold text-base'>
 					{isLoading ? 'Sending...' : 'Send'}
 				</Text>
 			</TouchableOpacity>

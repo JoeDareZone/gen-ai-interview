@@ -16,7 +16,7 @@ export function useChatConversation(
 				options.studentProfile?.grade || '7'
 			}. Provide super basic, clear answers using a ${
 				options.studentProfile?.aiPersonality || 'friendly'
-			} tone. Your response should include three very simple bullet points, each beginning with a heading like "Step 1:", "Step 2:", and "Step 3:", the bullet points should be short and to the point. Use relatable examples and a warm, encouraging style. Return your answer in JSON format using the provided schema.`,
+			} tone. Your response should include three very simple bullet points, each beginning with a heading like "Step 1:", "Step 2:", and "Step 3:", the bullet points should be short and to the point. Use relatable examples. Return your answer in JSON format using the provided schema.`,
 		},
 	])
 

@@ -58,14 +58,12 @@ export default function ChatScreen() {
 		}
 	}, [chatId])
 
-	// Update input text when transcript updates
 	useEffect(() => {
 		if (transcript) {
 			setInputText(transcript)
 		}
 	}, [transcript])
 
-	// Auto-send 2 seconds after speech stops
 	useEffect(() => {
 		if (!isListening && inputText.trim() !== '') {
 			autoSendTimer.current = setTimeout(() => {
@@ -88,7 +86,7 @@ export default function ChatScreen() {
 		const fetchedImageUrl = await fetchImage(prompt)
 
 		if (type === 'explainFurther') {
-			prompt = `Can you elaborate further on the following point: "${prompt}"? Please provide more detail and an example.`
+			prompt = `Can you elaborate further on the following point: "${prompt}"?`
 		}
 
 		const userMsg: ChatMessage = {
@@ -106,8 +104,6 @@ export default function ChatScreen() {
 			const aiResponse = await sendMessage(userMsg.text, type)
 
 			let aiMsg: ChatMessage
-			// if (type === 'bulletPoints' && !prompt.includes('further')) {
-			console.log('getting bullet points')
 			aiMsg = {
 				text: aiResponse.text,
 				bulletPoints: aiResponse.bulletPoints || [],
@@ -115,12 +111,6 @@ export default function ChatScreen() {
 				imageUrl: fetchedImageUrl || '',
 				timestamp: new Date().toISOString(),
 			}
-			console.log('aiMsg', aiMsg)
-			// aiMsg = {
-			// 	text: aiResponse.text,
-			// 	role: 'AI',
-			// 	timestamp: new Date().toISOString(),
-			// }
 
 			await addDocument(`chats/${chatId}/messages`, aiMsg)
 			setChatMessages(prev => [...prev, aiMsg])
@@ -156,7 +146,10 @@ export default function ChatScreen() {
 		<SafeAreaView className='flex-1 bg-white p-4'>
 			{/* Header */}
 			<View className='flex-row items-center mb-4 py-2 border-b border-gray-300'>
-				<TouchableOpacity onPress={() => router.back()} className='p-2'>
+				<TouchableOpacity
+					onPress={() => router.dismissAll()}
+					className='p-2'
+				>
 					<Text className='text-lg font-bold text-gray-800'>
 						&larr; Back
 					</Text>

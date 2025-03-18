@@ -23,7 +23,13 @@ export const FirestoreProvider = ({ children }: { children: ReactNode }) => {
 	}
 
 	const addDocument = async (collectionName: string, docData: object) => {
-		await addDoc(collection(firestore, collectionName), docData)
+		console.log('Adding document to collection:', collectionName)
+		console.log('Document data:', docData)
+		await addDoc(collection(firestore, collectionName), docData).then(() => {
+			console.log('Document added successfully')
+		}).catch((error) => {
+			console.error('Error adding document:', error)
+		})
 	}
 
 	return (

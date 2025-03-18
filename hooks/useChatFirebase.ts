@@ -1,5 +1,5 @@
 import { useFirestore } from '@/context/FirestoreContext'
-import { useOpenAI } from '@/hooks/useOpenAI'
+import { useOpenAI } from '@/hooks/useChatConversation'
 import { ChatMessage } from '@/types/chat'
 
 import { useState } from 'react'

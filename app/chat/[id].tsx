@@ -1,5 +1,7 @@
+// /app/chat/[id].tsx
+import MicButton from '@/components/ui/MicButton'
 import { useFirestore } from '@/context/FirestoreContext'
-import { useOpenAI } from '@/hooks/useOpenAI'
+import { useChatConversation } from '@/hooks/useChatConversation'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { ChatMessage } from '@/types/chat'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -11,29 +13,31 @@ export default function ChatScreen() {
 	const { id: chatId } = useLocalSearchParams()
 	const router = useRouter()
 	const { getCollection, addDocument } = useFirestore()
-	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-	const [newMessage, setNewMessage] = useState('')
-	const flatListRef = useRef<FlatList>(null)
-	const { generateCompletion, isLoading } = useOpenAI()
-	const { isListening, transcript, startListening, stopListening } =
-		useSpeechToText()
-	const [inputText, setInputText] = useState('')
+	const { messages, isLoading, error, sendMessage } = useChatConversation();
 
-	// Fetch messages from Firestore for this chat
+	const {
+		isListening,
+		transcript,
+		startListening,
+		stopListening,
+		isRecognized,
+	} = useSpeechToText()
+
+	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+	const [inputText, setInputText] = useState('')
+	const flatListRef = useRef<FlatList>(null)
+	const autoSendTimer = useRef<NodeJS.Timeout | null>(null)
+
+	// Fetch messages and sort them by timestamp (oldest first)
 	const fetchMessages = async () => {
 		try {
 			const messages = await getCollection(`chats/${chatId}/messages`)
-			// Sort messages in ascending order based on the timestamp
 			const sortedMessages = messages.sort(
-				(
-					a: { timestamp: string | number | Date },
-					b: { timestamp: string | number | Date }
-				) =>
+				(a: ChatMessage, b: ChatMessage) =>
 					new Date(a.timestamp).getTime() -
 					new Date(b.timestamp).getTime()
 			)
 			setChatMessages(sortedMessages)
-			console.log('Messages fetched:', sortedMessages)
 		} catch (error) {
 			console.error('Error fetching messages:', error)
 		}
@@ -45,37 +49,52 @@ export default function ChatScreen() {
 		}
 	}, [chatId])
 
-	useEffect(() => {
-		if (transcript) {
-			setInputText(transcript)
-		}
-	}, [transcript])
+	// // Update input text when transcript changes
+	// useEffect(() => {
+	// 	if (transcript) {
+	// 		setInputText(transcript)
+	// 	}
+	// }, [transcript])
+
+	// // Auto-send 2 seconds after speech stops
+	// useEffect(() => {
+	// 	if (!isListening && inputText.trim() !== '') {
+	// 		// Set a 2-second timer to auto-send the message
+	// 		autoSendTimer.current = setTimeout(() => {
+	// 			handleSendMessage()
+	// 		}, 2000)
+	// 	} else {
+	// 		if (autoSendTimer.current) {
+	// 			clearTimeout(autoSendTimer.current)
+	// 		}
+	// 	}
+	// }, [isListening, inputText])
 
 	const handleSendMessage = async () => {
-		if (!newMessage.trim()) return
+		if (!inputText.trim()) return
 
-		// Create and add the user's message to Firestore
 		const userMsg: ChatMessage = {
-			text: newMessage.trim(),
+			text: inputText.trim(),
 			role: 'user',
 			timestamp: new Date().toISOString(),
 		}
 
 		try {
+			// Add user's message to Firestore
 			await addDocument(`chats/${chatId}/messages`, userMsg)
 			setChatMessages(prev => [...prev, userMsg])
-			setNewMessage('')
+			setInputText('')
 			flatListRef.current?.scrollToEnd({ animated: true })
 
-			// Generate AI response based on the prompt
-			const aiResponse = await generateCompletion(userMsg.text)
+			// Generate AI response based on the user's message
+			const aiResponse = await sendMessage(userMsg.text)
 			const aiMsg: ChatMessage = {
 				text: aiResponse || 'Error generating response',
 				role: 'AI',
 				timestamp: new Date().toISOString(),
 			}
 
-			// Add the AI message to Firestore
+			// Add AI message to Firestore
 			await addDocument(`chats/${chatId}/messages`, aiMsg)
 			setChatMessages(prev => [...prev, aiMsg])
 			flatListRef.current?.scrollToEnd({ animated: true })
@@ -115,15 +134,22 @@ export default function ChatScreen() {
 					flatListRef.current?.scrollToEnd({ animated: true })
 				}
 			/>
-			<TextInput
-				className='w-full h-16 border border-gray-300 rounded-lg bg-white px-4 text-lg'
-				placeholder='Type your message...'
-				placeholderTextColor='#A0AEC0'
-				value={newMessage}
-				onChangeText={setNewMessage}
-				onSubmitEditing={handleSendMessage}
-				returnKeyType='send'
-			/>
+			{/* Chat input area with voice input */}
+			<View className='flex-row items-center mt-4'>
+				<MicButton
+					isListening={isListening}
+					onPress={isListening ? stopListening : startListening}
+				/>
+				<TextInput
+					className='flex-1 h-16 border border-gray-300 rounded-lg bg-white px-4 text-lg'
+					placeholder='Type or speak your message...'
+					placeholderTextColor='#A0AEC0'
+					value={inputText}
+					onChangeText={setInputText}
+					onSubmitEditing={handleSendMessage}
+					returnKeyType='send'
+				/>
+			</View>
 			<TouchableOpacity
 				className='w-full bg-blue-500 p-4 rounded-lg mt-2'
 				onPress={handleSendMessage}
@@ -132,12 +158,6 @@ export default function ChatScreen() {
 				<Text className='text-white text-center font-bold text-lg'>
 					{isLoading ? 'Sending...' : 'Send'}
 				</Text>
-			</TouchableOpacity>
-			<TouchableOpacity
-				onPress={isListening ? stopListening : startListening}
-				className='bg-gray-200 p-2 rounded-full mr-2'
-			>
-				<Text>{isListening ? 'Stop' : 'Speak'}</Text>
 			</TouchableOpacity>
 		</SafeAreaView>
 	)

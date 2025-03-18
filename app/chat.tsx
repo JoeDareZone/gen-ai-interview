@@ -1,4 +1,4 @@
-import { useOpenAI } from '@/hooks/useOpenAI'
+import { useOpenAI } from '@/hooks/useChatConversation'
 import { StatusBar } from 'expo-status-bar'
 import {
 	ActivityIndicator,

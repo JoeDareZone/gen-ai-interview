@@ -28,16 +28,13 @@ export const FirestoreProvider = ({ children }: { children: ReactNode }) => {
 			id: doc.id,
 			...doc.data(),
 		}))
-		console.log('Collection data:', data)
 		return data
 	}
 
 	const addDocument = async (collectionPath: string, docData: object) => {
-		console.log('Adding document to collection:', collectionPath)
-		console.log('Document data:', docData)
-		await addDoc(collection(firestore, collectionPath), docData)
-			.then(() => console.log('Document added successfully'))
-			.catch(error => console.error('Error adding document:', error))
+		await addDoc(collection(firestore, collectionPath), docData).catch(
+			error => console.error('Error adding document:', error)
+		)
 	}
 
 	const getSubcollection = async (
